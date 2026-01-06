@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PiggyBank, Eye, EyeOff, Loader2, Lock, CheckCircle2 } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Lock, CheckCircle2, PiggyBank } from 'lucide-react';
 import { z } from 'zod';
 
 const resetSchema = z.object({
@@ -23,6 +23,7 @@ export default function ResetPassword() {
   
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [logoLoaded, setLogoLoaded] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -106,9 +107,19 @@ export default function ResetPassword() {
         className="w-full max-w-md relative z-10"
       >
         <div className="flex justify-center mb-8">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-[hsl(199,89%,48%)] flex items-center justify-center shadow-lg">
-              <PiggyBank className="w-7 h-7 text-primary-foreground" />
+          <div className={`flex items-center ${logoLoaded ? 'gap-1' : 'gap-3'}`}>
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg overflow-hidden ${
+              logoLoaded ? 'bg-[#0A0E1A]' : 'bg-gradient-to-br from-primary to-[hsl(199,89%,48%)]'
+            }`}>
+              <img
+                src="/logo.png"
+                alt="Logo"
+                className="w-full h-full object-cover scale-150"
+                onLoad={() => setLogoLoaded(true)}
+                onError={() => setLogoLoaded(false)}
+                style={{ display: logoLoaded ? 'block' : 'none' }}
+              />
+              {!logoLoaded && <PiggyBank className="w-7 h-7 text-primary-foreground" />}
             </div>
             <span className="font-bold text-2xl text-foreground">FinanceTracker</span>
           </div>
