@@ -11,25 +11,25 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/applogo.png",
+      "src": "/Applogo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/applogo.png",
+      "src": "/Applogo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/applogo.png",
+      "src": "/Applogo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/applogo.png",
+      "src": "/Applogo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -38,7 +38,7 @@
   "categories": ["finance", "productivity"],
   "screenshots": [
     {
-      "src": "/applogo.png",
+      "src": "/Applogo.png",
       "sizes": "512x512",
       "type": "image/png",
       "form_factor": "narrow"
