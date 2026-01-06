@@ -3,8 +3,8 @@
  * Handles push notifications, offline functionality, and app caching
  */
 
-const CACHE_NAME = 'financeflow-v1';
-const RUNTIME_CACHE = 'financeflow-runtime-v1';
+const CACHE_NAME = 'financetracker-v1';
+const RUNTIME_CACHE = 'financetracker-runtime-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -125,18 +125,18 @@ self.addEventListener('push', (event) => {
     notificationData = event.data.json();
   } catch (e) {
     notificationData = {
-      title: 'FinanceFlow',
+      title: 'FinanceTracker',
       body: event.data.text(),
     };
   }
 
-  const { title = 'FinanceFlow', ...options } = notificationData;
+  const { title = 'FinanceTracker', ...options } = notificationData;
 
   event.waitUntil(
     self.registration.showNotification(title, {
       icon: '/icon-192.png',
       badge: '/icon-192.png',
-      tag: 'financeflow-notification',
+      tag: 'financetracker-notification',
       requireInteraction: false,
       ...options,
     })

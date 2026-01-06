@@ -110,7 +110,7 @@ export default function ResetPassword() {
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-[hsl(199,89%,48%)] flex items-center justify-center shadow-lg">
               <PiggyBank className="w-7 h-7 text-primary-foreground" />
             </div>
-            <span className="font-bold text-2xl text-foreground">FinanceFlow</span>
+            <span className="font-bold text-2xl text-foreground">FinanceTracker</span>
           </div>
         </div>
 

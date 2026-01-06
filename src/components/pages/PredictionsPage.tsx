@@ -11,7 +11,8 @@ import {
   Target,
   Zap,
   Clock,
-  Loader2
+  Loader2,
+  Lock
 } from 'lucide-react';
 import { Transaction, Prediction, ExpenseCategory } from '@/types/finance';
 import { cn } from '@/lib/utils';
@@ -20,6 +21,7 @@ import { EmptyPredictionState } from '@/components/ui/empty-state';
 import { Area, AreaChart, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { calculateMonthlyData } from '@/data/mockData';
 import { trainMLModel, predictExpenses, disposeModel } from '@/lib/mlPrediction';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import type { MLModel } from '@/lib/mlPrediction';
 
 interface PredictionsPageProps {
@@ -38,6 +40,7 @@ interface MLState {
 
 
 export function PredictionsPage({ transactions }: PredictionsPageProps) {
+  const { preferences, updatePreferences } = usePreferences();
   const [mlState, setMlState] = useState<MLState>({
     model: null,
     isTraining: false,
@@ -182,6 +185,57 @@ export function PredictionsPage({ transactions }: PredictionsPageProps) {
       { month: monthAfter, income: 0, expenses: Math.round(totalPredicted * 1.05), savings: -Math.round(totalPredicted * 1.05) },
     ];
   }, [monthlyData, totalPredicted]);
+
+  // Show disabled state if predictions are not enabled
+  if (!preferences.predictionsEnabled) {
+    return (
+      <div className="space-y-6">
+        <motion.div
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.4 }}
+          className="glass-card-elevated p-6 relative overflow-hidden"
+        >
+          <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="relative">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 rounded-xl bg-primary/10">
+                <Brain className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">AI-Powered Predictions</h2>
+                <p className="text-muted-foreground">Neural network-based expense forecasting</p>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="glass-card p-6"
+        >
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-16 h-16 rounded-xl bg-muted/50 flex items-center justify-center">
+              <Lock className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-foreground mb-1">Predictions Disabled</h3>
+              <p className="text-muted-foreground">You've opted out of AI-powered spending predictions. Enable it in Settings to get personalized insights.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => updatePreferences({ predictionsEnabled: true })}
+            className="px-6 py-2 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors"
+          >
+            Enable Personalized Insights
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
 
   // Show empty state if not enough data
   if (daysOfData < MIN_DAYS_FOR_PREDICTION) {

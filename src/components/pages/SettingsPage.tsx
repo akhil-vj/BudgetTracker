@@ -10,7 +10,6 @@ import {
   Download,
   Trash2,
   Moon,
-  Sun,
   Camera,
   Mail,
   Phone,
@@ -54,8 +53,10 @@ import { useToast } from '@/hooks/use-toast';
 import { usePreferences, CurrencyCode, DateFormatType, TimezoneType } from '@/contexts/PreferencesContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotificationSettings } from '@/hooks/useNotificationSettings';
+import { useTransactions } from '@/hooks/useTransactions';
 import { formatCurrency, currencyNames } from '@/lib/currency';
 import { dateFormatNames, timezoneNames, formatDate } from '@/lib/date';
+import { generatePDF } from '@/lib/pdfExport';
 import { EmptyState } from '@/components/ui/empty-state';
 
 export function SettingsPage() {
@@ -71,6 +72,7 @@ export function SettingsPage() {
   } = usePreferences();
   const { isAuthenticated, updatePassword, signOut, deleteAccount, user } = useAuth();
   const { pushStatus, requestPushPermission, disablePushNotifications } = useNotificationSettings();
+  const { transactions } = useTransactions();
   
   const [authLoading, setAuthLoading] = useState(false);
 
@@ -480,6 +482,7 @@ export function SettingsPage() {
             </CardContent>
           </Card>
 
+          {/* Two-Factor Authentication - Hidden for now
           <Card>
             <CardHeader className="p-4 sm:p-6">
               <CardTitle className="text-lg sm:text-xl">Two-Factor Authentication</CardTitle>
@@ -498,6 +501,7 @@ export function SettingsPage() {
               <p className="text-xs text-muted-foreground mt-2">Coming soon</p>
             </CardContent>
           </Card>
+          */}
 
           <Card>
             <CardHeader className="p-4 sm:p-6">
@@ -524,6 +528,7 @@ export function SettingsPage() {
 
         {/* Preferences Tab */}
         <TabsContent value="preferences" className="space-y-4 sm:space-y-6">
+          {/* Appearance Section - Hidden for now
           <Card>
             <CardHeader className="p-4 sm:p-6">
               <CardTitle className="text-lg sm:text-xl">Appearance</CardTitle>
@@ -532,20 +537,24 @@ export function SettingsPage() {
             <CardContent className="space-y-6 p-4 sm:p-6">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  {preferences.darkMode ? <Moon className="w-5 h-5 text-primary flex-shrink-0" /> : <Sun className="w-5 h-5 text-primary flex-shrink-0" />}
+                  <Moon className="w-5 h-5 text-primary flex-shrink-0" />
                   <div className="space-y-0.5 min-w-0">
-                    <p className="font-medium text-foreground">Dark Mode</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-foreground">Dark Mode</p>
+                      <Badge variant="secondary" className="text-xs">Light Mode Coming Soon</Badge>
+                    </div>
                     <p className="text-sm text-muted-foreground">Use dark theme across the app</p>
                   </div>
                 </div>
                 <Switch 
-                  checked={preferences.darkMode} 
-                  onCheckedChange={(checked) => updatePreferences({ darkMode: checked })}
+                  disabled
+                  checked={true}
                   className="flex-shrink-0"
                 />
               </div>
             </CardContent>
           </Card>
+          */}
 
           <Card>
             <CardHeader className="p-4 sm:p-6">
@@ -587,6 +596,7 @@ export function SettingsPage() {
                   </Select>
                 </div>
               </div>
+              {/* Timezone - Hidden for now
               <div className="space-y-2">
                 <Label>Timezone</Label>
                 <Select 
@@ -603,6 +613,7 @@ export function SettingsPage() {
                   </SelectContent>
                 </Select>
               </div>
+              */}
             </CardContent>
           </Card>
 
@@ -679,20 +690,6 @@ export function SettingsPage() {
                 <Switch
                   checked={preferences.notificationsEmail}
                   onCheckedChange={(checked) => updatePreferences({ notificationsEmail: checked })}
-                  className="flex-shrink-0"
-                />
-              </div>
-              <Separator />
-
-              {/* Sound Effects */}
-              <div className="flex items-start justify-between gap-3 py-2">
-                <div className="space-y-0.5 flex-1 min-w-0">
-                  <p className="font-medium text-foreground">Sound effects</p>
-                  <p className="text-sm text-muted-foreground">Play sounds for notifications</p>
-                </div>
-                <Switch
-                  checked={preferences.notificationsSound}
-                  onCheckedChange={(checked) => updatePreferences({ notificationsSound: checked })}
                   className="flex-shrink-0"
                 />
               </div>
@@ -793,13 +790,72 @@ export function SettingsPage() {
               <div className="grid gap-4 md:grid-cols-1 md:space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-2">
                   <div className="space-y-0.5">
-                    <p className="font-medium text-foreground">Analytics & Improvements</p>
-                    <p className="text-sm text-muted-foreground">Help us improve by sharing anonymous usage data</p>
+                    <p className="font-medium text-foreground">Export Data</p>
+                    <p className="text-sm text-muted-foreground">Download your financial data as PDF</p>
                   </div>
-                  <Switch 
-                    checked={preferences.analyticsEnabled}
-                    onCheckedChange={(checked) => updatePreferences({ analyticsEnabled: checked })}
-                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      try {
+                        // Calculate summary data
+                        const expenses = transactions.filter(t => t.type === 'expense');
+                        const income = transactions.filter(t => t.type === 'income');
+                        
+                        const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
+                        const totalIncome = income.reduce((sum, t) => sum + t.amount, 0);
+                        const totalSavings = totalIncome - totalExpenses;
+
+                        // Group transactions by category for table
+                        const expensesByCategory: Record<string, number> = {};
+                        expenses.forEach(t => {
+                          expensesByCategory[t.category] = (expensesByCategory[t.category] || 0) + t.amount;
+                        });
+
+                        const categoryRows = Object.entries(expensesByCategory)
+                          .sort((a, b) => b[1] - a[1])
+                          .slice(0, 10)
+                          .map(([category, amount]) => [
+                            category,
+                            formatCurrency(amount, preferences.currency),
+                          ]);
+
+                        // Generate PDF
+                        generatePDF({
+                          title: 'Financial Data Export',
+                          subtitle: `Generated on ${formatDate(new Date().toISOString().split('T')[0], preferences.dateFormat)}`,
+                          summaryCards: [
+                            { label: 'Total Income', value: formatCurrency(totalIncome, preferences.currency) },
+                            { label: 'Total Expenses', value: formatCurrency(totalExpenses, preferences.currency) },
+                            { label: 'Net Savings', value: formatCurrency(totalSavings, preferences.currency) },
+                          ],
+                          tables: [
+                            {
+                              title: 'Top Expense Categories',
+                              headers: ['Category', 'Amount'],
+                              rows: categoryRows,
+                            },
+                          ],
+                          filename: `financial-data-${new Date().toISOString().split('T')[0]}.pdf`,
+                          accentColor: [37, 99, 235],
+                        });
+
+                        toast({
+                          title: "Export Successful",
+                          description: "Your financial data has been downloaded as PDF",
+                        });
+                      } catch (error) {
+                        toast({
+                          title: "Export Failed",
+                          description: "Unable to generate PDF. Please try again.",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Export
+                  </Button>
                 </div>
                 <Separator className="md:block hidden" />
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-2">

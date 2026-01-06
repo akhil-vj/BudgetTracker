@@ -1,6 +1,6 @@
 {
-  "name": "FinanceFlow - Personal Finance Tracker",
-  "short_name": "FinanceFlow",
+  "name": "FinanceTracker - Personal Finance Tracker",
+  "short_name": "FinanceTracker",
   "description": "Manage your finances with expense tracking, budgeting, and AI-powered predictions",
   "start_url": "/",
   "scope": "/",
@@ -11,36 +11,36 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/icon-192.svg",
+      "src": "/applogo.ico",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/x-icon",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.svg",
+      "src": "/applogo.ico",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/x-icon",
       "purpose": "any"
     },
     {
-      "src": "/icon-192-maskable.svg",
+      "src": "/applogo.ico",
       "sizes": "192x192",
-      "type": "image/svg+xml",
+      "type": "image/x-icon",
       "purpose": "maskable"
     },
     {
-      "src": "/icon-512-maskable.svg",
+      "src": "/applogo.ico",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/x-icon",
       "purpose": "maskable"
     }
   ],
   "categories": ["finance", "productivity"],
   "screenshots": [
     {
-      "src": "/icon-512.svg",
+      "src": "/applogo.ico",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/x-icon",
       "form_factor": "narrow"
     }
   ]

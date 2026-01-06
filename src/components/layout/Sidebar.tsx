@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useState } from 'react';
 import { 
   LayoutDashboard, 
   TrendingUp, 
@@ -44,6 +45,7 @@ interface SidebarProps {
 export function Sidebar({ activeSection, onNavigate }: SidebarProps) {
   const { user, profile, signOut } = useAuth();
   const { unreadCount } = useAlerts();
+  const [logoLoaded, setLogoLoaded] = useState(false);
 
   const getInitials = () => {
     if (profile?.first_name || profile?.last_name) {
@@ -74,15 +76,29 @@ export function Sidebar({ activeSection, onNavigate }: SidebarProps) {
       className="fixed left-0 top-0 h-full w-64 bg-sidebar border-r border-sidebar-border flex flex-col z-50"
     >
       {/* Logo */}
-      <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
+      <div className="h-20 flex items-center px-6 border-b border-sidebar-border">
         <motion.div 
-          className="flex items-center gap-3"
+          className={cn("flex items-center w-full", logoLoaded ? "gap-1" : "gap-3")}
           whileHover={{ scale: 1.02 }}
         >
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary to-[hsl(199,89%,48%)] flex items-center justify-center shadow-lg">
-            <PiggyBank className="w-5 h-5 text-primary-foreground" />
+          <div className={cn(
+            "w-12 h-12 rounded-lg flex items-center justify-center shadow-lg overflow-hidden flex-shrink-0",
+            logoLoaded 
+              ? "bg-[#0A0E1A]" 
+              : "bg-gradient-to-br from-primary to-[hsl(199,89%,48%)]"
+          )}>
+            {/* Replace with your custom logo image */}
+            <img 
+              src="/logo.png" 
+              alt="Logo"
+              className="w-full h-full object-cover scale-150"
+              onLoad={() => setLogoLoaded(true)}
+              onError={() => setLogoLoaded(false)}
+            />
+            {/* Fallback icon - shown when image fails to load */}
+            {!logoLoaded && <PiggyBank className="w-6 h-6 text-primary-foreground" />}
           </div>
-          <span className="font-semibold text-lg text-foreground">FinanceFlow</span>
+          <span className="font-semibold text-lg text-foreground">FinanceTracker</span>
         </motion.div>
       </div>
 

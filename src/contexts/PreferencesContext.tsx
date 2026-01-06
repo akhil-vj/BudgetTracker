@@ -172,6 +172,16 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     }
   }, [userId, fetchUserData]);
 
+  // Apply dark mode class to document
+  useEffect(() => {
+    const htmlElement = document.documentElement;
+    if (preferences.darkMode) {
+      htmlElement.classList.add('dark');
+    } else {
+      htmlElement.classList.remove('dark');
+    }
+  }, [preferences.darkMode]);
+
   useEffect(() => {
     const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {

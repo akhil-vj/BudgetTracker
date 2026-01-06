@@ -150,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       toast({
         title: "Account created!",
-        description: "Welcome to FinanceFlow. You can now start tracking your finances.",
+        description: "Welcome to FinanceTracker. You can now start tracking your finances.",
       });
 
       return { error: null };
