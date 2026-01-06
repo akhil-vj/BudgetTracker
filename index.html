@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FinanceFlow - Budget Tracker</title>
+    <meta name="description" content="Personal Finance Tracker with Expense Prediction - Track income, expenses, budgets and get AI-powered spending predictions." />
+    <meta name="author" content="FinanceFlow Team" />
+    <meta name="keywords" content="finance, budget, expense tracker, income tracker, financial planning, money management" />
+    <meta name="theme-color" content="#2563eb" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="FinanceFlow" />
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- App Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
+
+    <!-- Open Graph / Social Media -->
+    <meta property="og:title" content="FinanceFlow - Personal Finance Tracker" />
+    <meta property="og:description" content="Manage your finances intelligently with income tracking, expense management, budgeting, and AI-powered predictions." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://financeflow.app" />
+    <meta property="og:image" content="/icon-512.png" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="FinanceFlow - Budget Tracker" />
+    <meta name="twitter:description" content="Track income, expenses, budgets and get AI-powered spending predictions" />
+    <meta name="twitter:image" content="/icon-512.png" />
+
+    <!-- Startup Images for iOS -->
+    <link rel="apple-touch-startup-image" href="/icon-512.png" />
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker
+            .register('/sw.js', { scope: '/' })
+            .then((registration) => {
+              console.log('✅ Service Worker registered:', registration);
+              
+              // Check for updates
+              registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    // New service worker is ready, notify user
+                    console.log('📦 New version available - refreshing...');
+                    window.location.reload();
+                  }
+                });
+              });
+            })
+            .catch((error) => {
+              console.error('❌ Service Worker registration failed:', error);
+            });
+        });
+      }
+    </script>
+  </body>
+</html>
