@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   TrendingUp, 
@@ -60,6 +60,11 @@ const Index = () => {
   const { transactions, addTransaction, updateTransaction, deleteTransaction, isAdding } = useTransactions();
   const { budgets } = useBudgets();
   const { preferences } = usePreferences();
+
+  // Scroll to top when section changes
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeSection]);
 
   // Calculate derived data from transactions
   const summary = useMemo(() => calculateSummary(transactions), [transactions]);
@@ -252,7 +257,11 @@ const Index = () => {
 
             {/* Bottom Section */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-              <RecentTransactions transactions={transactions} onAddTransaction={() => setIsModalOpen(true)} />
+              <RecentTransactions 
+                transactions={transactions} 
+                onAddTransaction={() => setIsModalOpen(true)}
+                onViewAll={() => setActiveSection('expenses')}
+              />
               <BudgetOverview budgets={budgets} transactions={transactions} />
               <PredictionInsights predictions={mockPredictions} transactions={transactions} />
             </div>

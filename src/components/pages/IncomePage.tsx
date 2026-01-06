@@ -10,12 +10,13 @@ import {
   Wallet,
   MoreVertical,
   Trash2,
-  Pencil
+  Pencil,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Transaction } from '@/types/finance';
-import { categoryIcons } from '@/data/mockData';
+import { incomeCategories, categoryIcons } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/currency';
 import { formatDateShort } from '@/lib/date';
@@ -44,7 +45,14 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { isWithinInterval, startOfToday, startOfWeek, startOfMonth, startOfYear, parseISO } from 'date-fns';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { isWithinInterval, startOfToday, startOfMonth, startOfYear, parseISO } from 'date-fns';
 
 interface IncomePageProps {
   transactions: Transaction[];
@@ -56,8 +64,10 @@ interface IncomePageProps {
 export function IncomePage({ transactions, onAddTransaction, onEditTransaction, onDeleteTransaction }: IncomePageProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
   const { preferences } = usePreferences();
   const { toast } = useToast();
   
@@ -161,10 +171,8 @@ export function IncomePage({ transactions, onAddTransaction, onEditTransaction, 
     const today = startOfToday();
     
     switch (filter) {
-      case 'day':
+      case 'today':
         return { start: today, end: today };
-      case 'week':
-        return { start: startOfWeek(today), end: today };
       case 'month':
         return { start: startOfMonth(today), end: today };
       case 'year':
@@ -192,11 +200,13 @@ export function IncomePage({ transactions, onAddTransaction, onEditTransaction, 
   }, [incomeTransactions, dateFilter]);
   
   const filteredTransactions = useMemo(() => 
-    filteredByDate.filter(t => 
-      t.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.category.toLowerCase().includes(searchQuery.toLowerCase())
-    ),
-    [filteredByDate, searchQuery]
+    filteredByDate.filter(t => {
+      const matchesSearch = t.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.category.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory = categoryFilter === 'all' || t.category === categoryFilter;
+      return matchesSearch && matchesCategory;
+    }),
+    [filteredByDate, searchQuery, categoryFilter]
   );
   
   const totalIncome = useMemo(() => 
@@ -325,14 +335,83 @@ export function IncomePage({ transactions, onAddTransaction, onEditTransaction, 
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All time</SelectItem>
-                <SelectItem value="week">This week</SelectItem>
+                <SelectItem value="today">Today</SelectItem>
                 <SelectItem value="month">This month</SelectItem>
                 <SelectItem value="year">This year</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" size="icon" className="h-9 w-9 md:h-10 md:w-10 shrink-0">
-              <Filter className="w-4 h-4" />
-            </Button>
+            <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9 md:h-10 md:w-10 shrink-0">
+                  <Filter className="w-4 h-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-full sm:w-96">
+                <SheetHeader>
+                  <SheetTitle className="flex items-center justify-between">
+                    <span>Advanced Filters</span>
+                    <button onClick={() => setFilterOpen(false)}>
+                      <X className="w-4 h-4" />
+                    </button>
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="space-y-6 mt-6">
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">Date Range</label>
+                    <Select value={dateFilter} onValueChange={setDateFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select date range" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All time</SelectItem>
+                        <SelectItem value="today">Today</SelectItem>
+                        <SelectItem value="month">This month</SelectItem>
+                        <SelectItem value="year">This year</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">Category</label>
+                    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All categories</SelectItem>
+                        {incomeCategories.map(cat => (
+                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">Search</label>
+                    <Input 
+                      placeholder="Description or category..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="pt-4 border-t border-border">
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setCategoryFilter('all');
+                        setDateFilter('all');
+                        setFilterOpen(false);
+                      }}
+                    >
+                      Reset Filters
+                    </Button>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
             <Button variant="outline" className="gap-2 h-9 md:h-10 shrink-0" onClick={handleExportReport}>
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">Export</span>

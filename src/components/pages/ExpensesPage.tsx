@@ -9,7 +9,8 @@ import {
   ShoppingBag,
   MoreVertical,
   Trash2,
-  Pencil
+  Pencil,
+  X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,7 @@ import { formatDateShort } from '@/lib/date';
 import { EmptyState } from '@/components/ui/empty-state';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useToast } from '@/hooks/use-toast';
+import { isWithinInterval, startOfToday, startOfMonth, startOfYear, parseISO } from 'date-fns';
 import {
   Select,
   SelectContent,
@@ -42,6 +44,13 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 
 interface ExpensesPageProps {
   transactions: Transaction[];
@@ -53,8 +62,10 @@ interface ExpensesPageProps {
 export function ExpensesPage({ transactions, onAddTransaction, onEditTransaction, onDeleteTransaction }: ExpensesPageProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [dateRangeFilter, setDateRangeFilter] = useState('all');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
   const { preferences } = usePreferences();
   const { toast } = useToast();
   
@@ -164,14 +175,41 @@ export function ExpensesPage({ transactions, onAddTransaction, onEditTransaction
     [expenseTransactions]
   );
 
+  const getDateRange = (filter: string) => {
+    const today = startOfToday();
+    
+    switch (filter) {
+      case 'today':
+        return { start: today, end: today };
+      case 'month':
+        return { start: startOfMonth(today), end: today };
+      case 'year':
+        return { start: startOfYear(today), end: today };
+      default:
+        return { start: new Date(1970, 0, 1), end: new Date(2100, 11, 31) };
+    }
+  };
+
+  const filteredByDate = useMemo(() => {
+    const { start, end } = getDateRange(dateRangeFilter);
+    return expenseTransactions.filter(t => {
+      try {
+        const transactionDate = parseISO(t.date);
+        return isWithinInterval(transactionDate, { start, end });
+      } catch {
+        return false;
+      }
+    });
+  }, [expenseTransactions, dateRangeFilter]);
+
   const filteredTransactions = useMemo(() => 
-    expenseTransactions.filter(t => {
+    filteredByDate.filter(t => {
       const matchesSearch = t.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         t.category.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = categoryFilter === 'all' || t.category === categoryFilter;
       return matchesSearch && matchesCategory;
     }),
-    [expenseTransactions, searchQuery, categoryFilter]
+    [filteredByDate, searchQuery, categoryFilter]
   );
 
   if (expenseTransactions.length === 0) {
@@ -299,9 +337,78 @@ export function ExpensesPage({ transactions, onAddTransaction, onEditTransaction
                 ))}
               </SelectContent>
             </Select>
-            <Button variant="outline" size="icon" className="h-9 w-9 md:h-10 md:w-10 shrink-0">
-              <Filter className="w-4 h-4" />
-            </Button>
+            <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="h-9 w-9 md:h-10 md:w-10 shrink-0">
+                  <Filter className="w-4 h-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-full sm:w-96">
+                <SheetHeader>
+                  <SheetTitle className="flex items-center justify-between">
+                    <span>Advanced Filters</span>
+                    <button onClick={() => setFilterOpen(false)}>
+                      <X className="w-4 h-4" />
+                    </button>
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="space-y-6 mt-6">
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">Date Range</label>
+                    <Select value={dateRangeFilter} onValueChange={setDateRangeFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select date range" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All time</SelectItem>
+                        <SelectItem value="today">Today</SelectItem>
+                        <SelectItem value="month">This month</SelectItem>
+                        <SelectItem value="year">This year</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">Category</label>
+                    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All categories</SelectItem>
+                        {expenseCategories.map(cat => (
+                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-2 block">Search</label>
+                    <Input 
+                      placeholder="Description or category..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="pt-4 border-t border-border">
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setCategoryFilter('all');
+                        setDateRangeFilter('all');
+                        setFilterOpen(false);
+                      }}
+                    >
+                      Reset Filters
+                    </Button>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
             <Button variant="outline" className="gap-2 h-9 md:h-10 shrink-0" onClick={handleExportReport}>
               <Download className="w-4 h-4" />
               <span className="hidden sm:inline">Export</span>

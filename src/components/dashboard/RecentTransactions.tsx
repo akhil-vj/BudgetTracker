@@ -13,9 +13,10 @@ import { cn } from '@/lib/utils';
 interface RecentTransactionsProps {
   transactions: Transaction[];
   onAddTransaction?: () => void;
+  onViewAll?: () => void;
 }
 
-export function RecentTransactions({ transactions, onAddTransaction }: RecentTransactionsProps) {
+export function RecentTransactions({ transactions, onAddTransaction, onViewAll }: RecentTransactionsProps) {
   const { preferences } = usePreferences();
   const recentTransactions = useMemo(() => transactions.slice(0, 6), [transactions]);
 
@@ -51,7 +52,12 @@ export function RecentTransactions({ transactions, onAddTransaction }: RecentTra
     >
       <div className="p-4 border-b border-border flex items-center justify-between">
         <h3 className="text-lg font-semibold text-foreground">Recent Transactions</h3>
-        <Button variant="ghost" size="sm" className="text-primary text-sm">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="text-primary text-sm"
+          onClick={onViewAll}
+        >
           View all
         </Button>
       </div>
