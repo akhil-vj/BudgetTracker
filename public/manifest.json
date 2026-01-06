@@ -11,25 +11,25 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/app.png",
+      "src": "/Applogo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/app.png",
+      "src": "/Applogo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/app.png",
+      "src": "/Applogo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/app.png",
+      "src": "/Applogo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
