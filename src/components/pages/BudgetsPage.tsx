@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Plus, 
@@ -40,7 +40,7 @@ interface BudgetsPageProps {
 }
 
 export function BudgetsPage({ budgets: _, transactions }: BudgetsPageProps) {
-  const { budgets, addBudget, deleteBudget, updateBudget } = useBudgets();
+  const { budgets, addBudget, deleteBudget, updateBudget } = useBudgets(transactions);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newBudget, setNewBudget] = useState({
@@ -48,28 +48,8 @@ export function BudgetsPage({ budgets: _, transactions }: BudgetsPageProps) {
     limit: '',
   });
 
-  // Calculate spent amounts from transactions
-  const budgetsWithSpent = useMemo(() => {
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    
-    const categorySpending: Record<string, number> = {};
-    
-    transactions
-      .filter(t => {
-        if (t.type !== 'expense') return false;
-        const date = new Date(t.date);
-        return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-      })
-      .forEach(t => {
-        categorySpending[t.category] = (categorySpending[t.category] || 0) + t.amount;
-      });
-    
-    return budgets.map(budget => ({
-      ...budget,
-      spent: categorySpending[budget.category] || 0,
-    }));
-  }, [budgets, transactions]);
+  // Use budgets with spent amounts already calculated by the hook
+  const budgetsWithSpent = budgets;
 
   const totalBudget = budgetsWithSpent.reduce((acc, b) => acc + b.limit, 0);
   const totalSpent = budgetsWithSpent.reduce((acc, b) => acc + b.spent, 0);

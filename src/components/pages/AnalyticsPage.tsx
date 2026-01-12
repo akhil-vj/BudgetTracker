@@ -59,9 +59,39 @@ export function AnalyticsPage({ transactions }: AnalyticsPageProps) {
   const { toast } = useToast();
   const [period, setPeriod] = useState('6months');
 
+  // Filter transactions based on selected period
+  const filteredTransactions = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    let startDate: Date;
+
+    switch (period) {
+      case '1month':
+        startDate = new Date(currentYear, currentMonth, 1);
+        break;
+      case '3months':
+        startDate = new Date(currentYear, currentMonth - 2, 1);
+        break;
+      case '6months':
+        startDate = new Date(currentYear, currentMonth - 5, 1);
+        break;
+      case '1year':
+        startDate = new Date(currentYear - 1, currentMonth, 1);
+        break;
+      default:
+        startDate = new Date(currentYear, currentMonth - 5, 1);
+    }
+
+    return transactions.filter((t) => {
+      const transactionDate = new Date(t.date);
+      return transactionDate >= startDate;
+    });
+  }, [transactions, period]);
+
   const handleExportReport = () => {
-    const monthlyData = calculateMonthlyData(transactions);
-    const categoryData = calculateCategoryBreakdown(transactions);
+    const monthlyData = calculateMonthlyData(filteredTransactions);
+    const categoryData = calculateCategoryBreakdown(filteredTransactions);
     
     const totalIncome = monthlyData.reduce((acc, m) => acc + m.income, 0);
     const totalExpenses = monthlyData.reduce((acc, m) => acc + m.expenses, 0);
@@ -177,15 +207,15 @@ export function AnalyticsPage({ transactions }: AnalyticsPageProps) {
     });
   };
 
-  const monthlyData = useMemo(() => calculateMonthlyData(transactions), [transactions]);
-  const categoryData = useMemo(() => calculateCategoryBreakdown(transactions), [transactions]);
+  const monthlyData = useMemo(() => calculateMonthlyData(filteredTransactions), [filteredTransactions]);
+  const categoryData = useMemo(() => calculateCategoryBreakdown(filteredTransactions), [filteredTransactions]);
 
   const totalIncome = monthlyData.reduce((acc, m) => acc + m.income, 0);
   const totalExpenses = monthlyData.reduce((acc, m) => acc + m.expenses, 0);
   const totalSavings = monthlyData.reduce((acc, m) => acc + m.savings, 0);
   const avgSavingsRate = totalIncome > 0 ? (totalSavings / totalIncome) * 100 : 0;
 
-  const hasData = transactions.length > 0;
+  const hasData = filteredTransactions.length > 0;
 
   return (
     <div className="space-y-4 md:space-y-6">

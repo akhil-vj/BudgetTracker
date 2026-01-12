@@ -192,9 +192,9 @@ export function calculateMonthlyData(transactions: Transaction[]): MonthlyData[]
     .sort(([a], [b]) => a.localeCompare(b))
     .slice(-6) // Last 6 months
     .map(([key, data]) => {
-      const [, monthNum] = key.split('-');
+      const [year, monthNum] = key.split('-');
       return {
-        month: monthNames[parseInt(monthNum) - 1],
+        month: `${monthNames[parseInt(monthNum) - 1]} ${year}`,
         income: data.income,
         expenses: data.expenses,
         savings: data.income - data.expenses,

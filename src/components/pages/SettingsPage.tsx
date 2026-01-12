@@ -8,6 +8,7 @@ import {
   CreditCard, 
   Shield, 
   Download,
+  Printer,
   Trash2,
   Moon,
   Camera,
@@ -56,10 +57,15 @@ import { useNotificationSettings } from '@/hooks/useNotificationSettings';
 import { useTransactions } from '@/hooks/useTransactions';
 import { formatCurrency, currencyNames } from '@/lib/currency';
 import { dateFormatNames, timezoneNames, formatDate } from '@/lib/date';
-import { generatePDF } from '@/lib/pdfExport';
+import { generatePDF, generatePrintReport } from '@/lib/pdfExport';
 import { EmptyState } from '@/components/ui/empty-state';
 
-export function SettingsPage() {
+interface SettingsPageProps {
+  activeTab?: string;
+  onTabChange?: (tabId: string) => void;
+}
+
+export function SettingsPage({ activeTab = 'profile', onTabChange }: SettingsPageProps) {
   const { toast } = useToast();
   const { 
     preferences, 
@@ -276,7 +282,7 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-4 sm:space-y-6 max-w-4xl px-4 sm:px-0">
-      <Tabs defaultValue="profile" className="w-full">
+      <Tabs defaultValue={activeTab} value={activeTab} onValueChange={onTabChange} className="w-full">
         <TabsList className="mb-4 sm:mb-6 flex flex-wrap h-auto gap-1 w-full justify-start">
           <TabsTrigger value="profile" className="gap-2 text-xs sm:text-sm flex-1 sm:flex-initial min-w-0">
             <User className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -791,71 +797,136 @@ export function SettingsPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-2">
                   <div className="space-y-0.5">
                     <p className="font-medium text-foreground">Export Data</p>
-                    <p className="text-sm text-muted-foreground">Download your financial data as PDF</p>
+                    <p className="text-sm text-muted-foreground">Print your financial data</p>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      try {
-                        // Calculate summary data
-                        const expenses = transactions.filter(t => t.type === 'expense');
-                        const income = transactions.filter(t => t.type === 'income');
-                        
-                        const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
-                        const totalIncome = income.reduce((sum, t) => sum + t.amount, 0);
-                        const totalSavings = totalIncome - totalExpenses;
+                  <div className="flex gap-2 flex-col sm:flex-row w-full sm:w-auto">
+                    {/* <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        try {
+                          // Calculate summary data
+                          const expenses = transactions.filter(t => t.type === 'expense');
+                          const income = transactions.filter(t => t.type === 'income');
+                          
+                          const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
+                          const totalIncome = income.reduce((sum, t) => sum + t.amount, 0);
+                          const totalSavings = totalIncome - totalExpenses;
 
-                        // Group transactions by category for table
-                        const expensesByCategory: Record<string, number> = {};
-                        expenses.forEach(t => {
-                          expensesByCategory[t.category] = (expensesByCategory[t.category] || 0) + t.amount;
-                        });
+                          // Group transactions by category for table
+                          const expensesByCategory: Record<string, number> = {};
+                          expenses.forEach(t => {
+                            expensesByCategory[t.category] = (expensesByCategory[t.category] || 0) + t.amount;
+                          });
 
-                        const categoryRows = Object.entries(expensesByCategory)
-                          .sort((a, b) => b[1] - a[1])
-                          .slice(0, 10)
-                          .map(([category, amount]) => [
-                            category,
-                            formatCurrency(amount, preferences.currency),
-                          ]);
+                          const categoryRows = Object.entries(expensesByCategory)
+                            .sort((a, b) => b[1] - a[1])
+                            .slice(0, 10)
+                            .map(([category, amount]) => [
+                              category,
+                              formatCurrency(amount, preferences.currency),
+                            ]);
 
-                        // Generate PDF
-                        generatePDF({
-                          title: 'Financial Data Export',
-                          subtitle: `Generated on ${formatDate(new Date().toISOString().split('T')[0], preferences.dateFormat)}`,
-                          summaryCards: [
-                            { label: 'Total Income', value: formatCurrency(totalIncome, preferences.currency) },
-                            { label: 'Total Expenses', value: formatCurrency(totalExpenses, preferences.currency) },
-                            { label: 'Net Savings', value: formatCurrency(totalSavings, preferences.currency) },
-                          ],
-                          tables: [
-                            {
-                              title: 'Top Expense Categories',
-                              headers: ['Category', 'Amount'],
-                              rows: categoryRows,
-                            },
-                          ],
-                          filename: `financial-data-${new Date().toISOString().split('T')[0]}.pdf`,
-                          accentColor: [37, 99, 235],
-                        });
+                          // Generate PDF
+                          generatePDF({
+                            title: 'Financial Data Export',
+                            subtitle: `Generated on ${formatDate(new Date().toISOString().split('T')[0], preferences.dateFormat)}`,
+                            summaryCards: [
+                              { label: 'Total Income', value: formatCurrency(totalIncome, preferences.currency) },
+                              { label: 'Total Expenses', value: formatCurrency(totalExpenses, preferences.currency) },
+                              { label: 'Net Savings', value: formatCurrency(totalSavings, preferences.currency) },
+                            ],
+                            tables: [
+                              {
+                                title: 'Top Expense Categories',
+                                headers: ['Category', 'Amount'],
+                                rows: categoryRows,
+                              },
+                            ],
+                            filename: `financial-data-${new Date().toISOString().split('T')[0]}.pdf`,
+                            accentColor: [37, 99, 235],
+                          });
 
-                        toast({
-                          title: "Export Successful",
-                          description: "Your financial data has been downloaded as PDF",
-                        });
-                      } catch (error) {
-                        toast({
-                          title: "Export Failed",
-                          description: "Unable to generate PDF. Please try again.",
-                          variant: "destructive",
-                        });
-                      }
-                    }}
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Export
-                  </Button>
+                          toast({
+                            title: "Export Successful",
+                            description: "Your financial data has been downloaded as PDF",
+                          });
+                        } catch (error) {
+                          toast({
+                            title: "Export Failed",
+                            description: "Unable to generate PDF. Please try again.",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download PDF
+                    </Button> */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        try {
+                          // Calculate summary data
+                          const expenses = transactions.filter(t => t.type === 'expense');
+                          const income = transactions.filter(t => t.type === 'income');
+                          
+                          const totalExpenses = expenses.reduce((sum, t) => sum + t.amount, 0);
+                          const totalIncome = income.reduce((sum, t) => sum + t.amount, 0);
+                          const totalSavings = totalIncome - totalExpenses;
+
+                          // Group transactions by category for table
+                          const expensesByCategory: Record<string, number> = {};
+                          expenses.forEach(t => {
+                            expensesByCategory[t.category] = (expensesByCategory[t.category] || 0) + t.amount;
+                          });
+
+                          const categoryRows = Object.entries(expensesByCategory)
+                            .sort((a, b) => b[1] - a[1])
+                            .slice(0, 10)
+                            .map(([category, amount]) => [
+                              category,
+                              formatCurrency(amount, preferences.currency),
+                            ]);
+
+                          // Generate printable report
+                          generatePrintReport({
+                            title: 'Financial Data Report',
+                            subtitle: `Generated on ${formatDate(new Date().toISOString().split('T')[0], preferences.dateFormat)}`,
+                            summaryCards: [
+                              { label: 'Total Income', value: formatCurrency(totalIncome, preferences.currency) },
+                              { label: 'Total Expenses', value: formatCurrency(totalExpenses, preferences.currency) },
+                              { label: 'Net Savings', value: formatCurrency(totalSavings, preferences.currency) },
+                            ],
+                            tables: [
+                              {
+                                title: 'Top Expense Categories',
+                                headers: ['Category', 'Amount'],
+                                rows: categoryRows,
+                              },
+                            ],
+                            filename: `financial-data-${new Date().toISOString().split('T')[0]}.pdf`,
+                            accentColor: [37, 99, 235],
+                          });
+
+                          toast({
+                            title: "Print Ready",
+                            description: "Your financial report is ready to print",
+                          });
+                        } catch (error) {
+                          toast({
+                            title: "Print Failed",
+                            description: "Unable to prepare report for printing. Please try again.",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      <Printer className="w-4 h-4 mr-2" />
+                      Print Report
+                    </Button>
+                  </div>
                 </div>
                 <Separator className="md:block hidden" />
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-2">

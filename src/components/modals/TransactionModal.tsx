@@ -28,15 +28,17 @@ interface TransactionModalProps {
     paymentMethod?: string;
   }) => void;
   editingTransaction?: Transaction | null;
+  isLoading?: boolean;
 }
 
-export function TransactionModal({ isOpen, onClose, onSubmit, editingTransaction }: TransactionModalProps) {
+export function TransactionModal({ isOpen, onClose, onSubmit, editingTransaction, isLoading = false }: TransactionModalProps) {
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [paymentMethod, setPaymentMethod] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const isEditing = !!editingTransaction;
 
@@ -63,8 +65,24 @@ export function TransactionModal({ isOpen, onClose, onSubmit, editingTransaction
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || !category) return;
+    const newErrors: Record<string, string> = {};
 
+    if (!amount || parseFloat(amount) <= 0) {
+      newErrors.amount = 'Amount must be greater than 0';
+    }
+    if (!category) {
+      newErrors.category = 'Category is required';
+    }
+    if (!date) {
+      newErrors.date = 'Date is required';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setErrors({});
     onSubmit({
       type,
       amount: parseFloat(amount),
@@ -152,6 +170,7 @@ export function TransactionModal({ isOpen, onClose, onSubmit, editingTransaction
               {/* Amount */}
               <div className="space-y-2">
                 <Label htmlFor="amount">Amount</Label>
+                {errors.amount && <p className="text-xs text-red-500">{errors.amount}</p>}
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">₹</span>
                   <Input
@@ -159,11 +178,14 @@ export function TransactionModal({ isOpen, onClose, onSubmit, editingTransaction
                     type="number"
                     placeholder="0.00"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="pl-8 text-lg font-semibold"
+                    onChange={(e) => {
+                      setAmount(e.target.value);
+                      if (errors.amount) setErrors({ ...errors, amount: '' });
+                    }}
+                    className={cn("pl-8 text-lg font-semibold", errors.amount && "border-red-500")}
                     step="0.01"
                     min="0"
-                    required
+                    disabled={isLoading}
                   />
                 </div>
               </div>
@@ -174,8 +196,12 @@ export function TransactionModal({ isOpen, onClose, onSubmit, editingTransaction
                   <Tag className="w-4 h-4" />
                   Category
                 </Label>
-                <Select value={category} onValueChange={setCategory} required>
-                  <SelectTrigger>
+                {errors.category && <p className="text-xs text-red-500">{errors.category}</p>}
+                <Select value={category} onValueChange={(val) => {
+                  setCategory(val);
+                  if (errors.category) setErrors({ ...errors, category: '' });
+                }} disabled={isLoading}>
+                  <SelectTrigger className={errors.category ? "border-red-500" : ""}>
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -194,12 +220,17 @@ export function TransactionModal({ isOpen, onClose, onSubmit, editingTransaction
                   <Calendar className="w-4 h-4" />
                   Date
                 </Label>
+                {errors.date && <p className="text-xs text-red-500">{errors.date}</p>}
                 <Input
                   id="date"
                   type="date"
                   value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  required
+                  onChange={(e) => {
+                    setDate(e.target.value);
+                    if (errors.date) setErrors({ ...errors, date: '' });
+                  }}
+                  disabled={isLoading}
+                  className={errors.date ? "border-red-500" : ""}
                 />
               </div>
 
@@ -243,15 +274,22 @@ export function TransactionModal({ isOpen, onClose, onSubmit, editingTransaction
 
               {/* Actions */}
               <div className="flex gap-3 pt-4">
-                <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={onClose} 
+                  className="flex-1"
+                  disabled={isLoading}
+                >
                   Cancel
                 </Button>
                 <Button 
                   type="submit" 
                   variant={type === 'income' ? 'income' : 'expense'} 
                   className="flex-1"
+                  disabled={isLoading}
                 >
-                  {isEditing ? 'Update' : 'Add'} {type === 'income' ? 'Income' : 'Expense'}
+                  {isLoading ? 'Adding...' : (isEditing ? 'Update' : 'Add')} {type === 'income' ? 'Income' : 'Expense'}
                 </Button>
               </div>
             </form>

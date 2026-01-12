@@ -63,6 +63,10 @@ export function useTransactions() {
       return data;
     },
     onSuccess: async () => {
+      toast({
+        title: "Success",
+        description: "Transaction added successfully",
+      });
       // Invalidate and refetch transactions query
       await queryClient.invalidateQueries({ queryKey: ['transactions', user?.id] });
       
@@ -113,6 +117,13 @@ export function useTransactions() {
         }
       }
     },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || 'Failed to add transaction. Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   // Update transaction
@@ -140,6 +151,11 @@ export function useTransactions() {
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['transactions', user?.id] });
+      
+      toast({
+        title: "Success",
+        description: "Transaction updated successfully",
+      });
       
       // Generate alerts after transaction is updated
       if (user?.id) {
@@ -183,6 +199,13 @@ export function useTransactions() {
         }
       }
     },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || 'Failed to update transaction. Please try again.',
+        variant: 'destructive',
+      });
+    },
   });
 
   // Delete transaction
@@ -197,6 +220,17 @@ export function useTransactions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions', user?.id] });
+      toast({
+        title: "Success",
+        description: "Transaction deleted successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || 'Failed to delete transaction. Please try again.',
+        variant: 'destructive',
+      });
     },
   });
 

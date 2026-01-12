@@ -32,6 +32,7 @@ import { Button } from '@/components/ui/button';
 import { useTransactions } from '@/hooks/useTransactions';
 import { useBudgets } from '@/hooks/useBudgets';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import type { PageItem } from '@/components/layout/SearchPages';
 import {
   mockPredictions,
   calculateSummary,
@@ -52,13 +53,31 @@ const sectionTitles: Record<string, { title: string; subtitle: string }> = {
   settings: { title: 'Settings', subtitle: 'Manage your account' },
 };
 
+const availablePages: PageItem[] = [
+  { id: 'dashboard', name: 'Dashboard', icon: '📊' },
+  { id: 'income', name: 'Income', icon: '💰' },
+  { id: 'expenses', name: 'Expenses', icon: '💳' },
+  { id: 'budgets', name: 'Budgets', icon: '🎯' },
+  { id: 'predictions', name: 'AI Predictions', icon: '🤖' },
+  { id: 'analytics', name: 'Analytics', icon: '📈' },
+  { id: 'alerts', name: 'Alerts', icon: '🔔' },
+  { id: 'settings', name: 'Settings', icon: '⚙️' },
+  // Settings sub-pages
+  { id: 'settings', name: 'Profile', icon: '👤', category: 'Settings', tabId: 'profile' },
+  { id: 'settings', name: 'Security', icon: '🔒', category: 'Settings', tabId: 'security' },
+  { id: 'settings', name: 'Preferences', icon: '🎨', category: 'Settings', tabId: 'preferences' },
+  { id: 'settings', name: 'Billing', icon: '💳', category: 'Settings', tabId: 'billing' },
+  { id: 'settings', name: 'Data & Privacy', icon: '🔐', category: 'Settings', tabId: 'data' },
+];
+
 const Index = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
+  const [activeSettingsTab, setActiveSettingsTab] = useState('profile');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  const { transactions, addTransaction, updateTransaction, deleteTransaction, isAdding } = useTransactions();
-  const { budgets } = useBudgets();
+  const { transactions, addTransaction, updateTransaction, deleteTransaction, isAdding, isUpdating } = useTransactions();
+  const { budgets } = useBudgets(transactions);
   const { preferences } = usePreferences();
 
   // Scroll to top when section changes
@@ -156,7 +175,7 @@ const Index = () => {
       case 'alerts':
         return <AlertsPage budgets={budgets} transactions={transactions} />;
       case 'settings':
-        return <SettingsPage />;
+        return <SettingsPage activeTab={activeSettingsTab} onTabChange={setActiveSettingsTab} />;
       default:
         return (
           <>
@@ -262,7 +281,7 @@ const Index = () => {
                 onAddTransaction={() => setIsModalOpen(true)}
                 onViewAll={() => setActiveSection('expenses')}
               />
-              <BudgetOverview budgets={budgets} transactions={transactions} />
+              <BudgetOverview budgets={budgets} />
               <PredictionInsights predictions={mockPredictions} transactions={transactions} />
             </div>
           </>
@@ -353,6 +372,13 @@ const Index = () => {
             subtitle={currentSection.subtitle}
             onAddTransaction={() => setIsModalOpen(true)}
             onNavigateToAlerts={() => setActiveSection('alerts')}
+            onNavigatePage={(pageId, tabId) => {
+              setActiveSection(pageId);
+              if (pageId === 'settings' && tabId) {
+                setActiveSettingsTab(tabId);
+              }
+            }}
+            availablePages={availablePages}
           />
         </div>
         <div className="p-3 sm:p-6">{renderContent()}</div>
@@ -363,6 +389,7 @@ const Index = () => {
         onClose={handleCloseModal} 
         onSubmit={handleAddTransaction}
         editingTransaction={editingTransaction}
+        isLoading={isAdding || isUpdating}
       />
     </div>
   );

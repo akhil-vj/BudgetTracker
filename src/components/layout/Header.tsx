@@ -1,17 +1,26 @@
 import { motion } from 'framer-motion';
 import { Search, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { NotificationSheet } from './NotificationSheet';
+import { SearchPages, type PageItem } from './SearchPages';
 
 interface HeaderProps {
   title: string;
   subtitle?: string;
   onAddTransaction?: () => void;
   onNavigateToAlerts?: () => void;
+  onNavigatePage?: (pageId: string, tabId?: string) => void;
+  availablePages?: PageItem[];
 }
 
-export function Header({ title, subtitle, onAddTransaction, onNavigateToAlerts }: HeaderProps) {
+export function Header({ 
+  title, 
+  subtitle, 
+  onAddTransaction, 
+  onNavigateToAlerts,
+  onNavigatePage,
+  availablePages = []
+}: HeaderProps) {
   return (
     <motion.header
       initial={{ y: -20, opacity: 0 }}
@@ -28,13 +37,15 @@ export function Header({ title, subtitle, onAddTransaction, onNavigateToAlerts }
 
       <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
         {/* Search - Desktop only */}
-        <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search transactions..." 
-            className="w-64 pl-9 bg-secondary/50 border-border/50 focus:bg-secondary"
-          />
-        </div>
+        {availablePages.length > 0 && onNavigatePage && (
+          <div className="hidden md:block">
+            <SearchPages
+              pages={availablePages}
+              onSelectPage={onNavigatePage}
+              placeholder="Search pages..."
+            />
+          </div>
+        )}
 
         {/* Search - Mobile icon button */}
         <Button 

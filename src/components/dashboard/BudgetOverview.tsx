@@ -1,6 +1,5 @@
-import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Budget, Transaction } from '@/types/finance';
+import { Budget } from '@/types/finance';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import { formatCurrency } from '@/lib/currency';
@@ -9,33 +8,12 @@ import { Target } from 'lucide-react';
 
 interface BudgetOverviewProps {
   budgets: Budget[];
-  transactions?: Transaction[];
 }
 
-export function BudgetOverview({ budgets, transactions = [] }: BudgetOverviewProps) {
+export function BudgetOverview({ budgets }: BudgetOverviewProps) {
   const { preferences } = usePreferences();
-  // Calculate spent amounts from transactions
-  const budgetsWithSpent = useMemo(() => {
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    
-    const categorySpending: Record<string, number> = {};
-    
-    transactions
-      .filter(t => {
-        if (t.type !== 'expense') return false;
-        const date = new Date(t.date);
-        return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-      })
-      .forEach(t => {
-        categorySpending[t.category] = (categorySpending[t.category] || 0) + t.amount;
-      });
-    
-    return budgets.map(budget => ({
-      ...budget,
-      spent: categorySpending[budget.category] || 0,
-    }));
-  }, [budgets, transactions]);
+  // Budgets already have spent amounts calculated by useBudgets hook
+  const budgetsWithSpent = budgets;
 
   if (budgets.length === 0) {
     return (

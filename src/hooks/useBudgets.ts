@@ -1,14 +1,15 @@
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Budget } from '@/types/finance';
+import { Budget, Transaction } from '@/types/finance';
 import { useToast } from './use-toast';
 
-export function useBudgets() {
+export function useBudgets(transactions: Transaction[] = []) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Fetch budgets
-  const { data: budgets = [], isLoading, error } = useQuery({
+  const { data: budgetsRaw = [], isLoading, error } = useQuery({
     queryKey: ['budgets'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -27,11 +28,33 @@ export function useBudgets() {
         id: budget.id,
         category: budget.category,
         limit: budget.limit,
-        spent: 0, // Will be calculated from transactions
         period: budget.period || 'monthly',
-      })) as Budget[];
+      })) as Omit<Budget, 'spent'>[];
     },
   });
+
+  // Calculate spent amounts from transactions for current month
+  const budgets = useMemo(() => {
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    
+    const categorySpending: Record<string, number> = {};
+    
+    transactions
+      .filter(t => {
+        if (t.type !== 'expense') return false;
+        const date = new Date(t.date);
+        return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+      })
+      .forEach(t => {
+        categorySpending[t.category] = (categorySpending[t.category] || 0) + t.amount;
+      });
+    
+    return budgetsRaw.map(budget => ({
+      ...budget,
+      spent: categorySpending[budget.category] || 0,
+    })) as Budget[];
+  }, [budgetsRaw, transactions]);
 
   // Add budget
   const addBudgetMutation = useMutation({

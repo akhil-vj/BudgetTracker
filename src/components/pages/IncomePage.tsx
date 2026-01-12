@@ -348,12 +348,7 @@ export function IncomePage({ transactions, onAddTransaction, onEditTransaction, 
               </SheetTrigger>
               <SheetContent side="right" className="w-full sm:w-96">
                 <SheetHeader>
-                  <SheetTitle className="flex items-center justify-between">
-                    <span>Advanced Filters</span>
-                    <button onClick={() => setFilterOpen(false)}>
-                      <X className="w-4 h-4" />
-                    </button>
-                  </SheetTitle>
+                  <SheetTitle>Advanced Filters</SheetTitle>
                 </SheetHeader>
                 <div className="space-y-6 mt-6">
                   <div>
