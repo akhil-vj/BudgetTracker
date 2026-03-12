@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from .database import engine
-from . import models
-from .config import FRONTEND_URL
+from database import engine
+import models
+from config import FRONTEND_URL
 
 import logging
 import os
@@ -41,7 +41,7 @@ app.add_middleware(
 def read_root():
     return {"message": "Welcome to the BudgetTracker API"}
 
-from .routers import auth, transactions, budgets, preferences, alerts, recurring_transactions, notifications
+from routers import auth, transactions, budgets, preferences, alerts, recurring_transactions, notifications
 
 app.include_router(auth.router)
 app.include_router(transactions.router)

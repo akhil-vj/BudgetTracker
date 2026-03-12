@@ -1,10 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
 from jose import JWTError, jwt
+import uuid
+import os
+import shutil
 
-from .. import schemas, models, utils, database
+import schemas
+import models
+import utils
+import database
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
@@ -30,7 +36,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     return user
 
 @router.post("/register", response_model=schemas.Token)
-def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
     # Check if user exists
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
@@ -58,7 +64,7 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.post("/login", response_model=schemas.Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(database.get_db)):
     user = db.query(models.User).filter(models.User.email == form_data.username).first()
     if not user or not utils.verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
@@ -78,7 +84,7 @@ def read_users_me(current_user: models.User = Depends(get_current_user)):
 def update_profile(
     profile_update: schemas.UserProfileUpdate,
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(database.get_db)
 ):
     if profile_update.firstName is not None:
         current_user.first_name = profile_update.firstName
@@ -97,7 +103,7 @@ def update_profile(
 async def upload_avatar(
     file: UploadFile = File(...),
     current_user: models.User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(database.get_db)
 ):
     # Validate file type
     if not file.content_type.startswith("image/"):

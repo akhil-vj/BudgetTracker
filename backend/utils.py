@@ -6,8 +6,8 @@ import bcrypt
 from datetime import datetime, timedelta
 import os
 
-from .database import get_db
-from . import models
+from database import get_db
+import models
 
 SECRET_KEY = os.getenv("SECRET_KEY", "your-super-secret-key-change-in-prod")
 ALGORITHM = "HS256"
