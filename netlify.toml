@@ -1,6 +1,7 @@
 [build]
   command = "npm run build"
   publish = "dist"
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF . ':!backend'"
 
 # SPA routing - serve index.html for all routes
 [[redirects]]
@@ -42,5 +43,5 @@
   port = 5173
 
 # Environment variables (add these in Netlify UI)
-# VITE_API_URL (e.g., https://your-backend-api.com)
+# VITE_API_URL (e.g., https://budgettracker-xteo.onrender.com)
 # VITE_VAPID_PUBLIC_KEY
