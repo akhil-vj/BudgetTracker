@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { api } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from './AuthContext';
+import { BACKEND_URL } from '../config';
 import { convertCurrency } from '@/lib/exchange';
 
 export type CurrencyCode = 'INR' | 'USD' | 'EUR' | 'GBP' | 'JPY';
@@ -83,7 +84,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
       if (authProfile) {
         let avatarUrl = authProfile.avatar_url || '';
         if (avatarUrl.startsWith('/uploads/')) {
-          const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+          const baseUrl = import.meta.env.VITE_API_URL || BACKEND_URL;
           avatarUrl = `${baseUrl}${avatarUrl}`;
         }
 
@@ -261,7 +262,7 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
 
       let avatarUrl = response.data.avatar_url;
       if (avatarUrl.startsWith('/uploads/')) {
-        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        const baseUrl = import.meta.env.VITE_API_URL || BACKEND_URL;
         avatarUrl = `${baseUrl}${avatarUrl}`;
       }
 

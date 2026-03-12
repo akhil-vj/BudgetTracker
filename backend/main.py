@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from .database import engine, Base
+from .database import engine
 from . import models
+from .config import FRONTEND_URL
 
 import logging
 import os
@@ -24,7 +25,7 @@ app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    os.getenv("FRONTEND_URL", "http://localhost:3000"),
+    FRONTEND_URL,
     "http://localhost:5173", # Vite default
 ]
 

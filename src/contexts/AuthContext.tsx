@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { api } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { BACKEND_URL } from '../config';
 
 export interface UserProfile {
   id: string;
@@ -39,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await api.get('/auth/me');
       const data = response.data;
       if (data.avatar_url && data.avatar_url.startsWith('/uploads/')) {
-        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        const baseUrl = import.meta.env.VITE_API_URL || BACKEND_URL;
         data.avatar_url = `${baseUrl}${data.avatar_url}`;
       }
       setProfile(data);
