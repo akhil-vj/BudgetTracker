@@ -83,7 +83,8 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
       if (authProfile) {
         let avatarUrl = authProfile.avatar_url || '';
         if (avatarUrl.startsWith('/uploads/')) {
-          avatarUrl = `http://localhost:8000${avatarUrl}`;
+          const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+          avatarUrl = `${baseUrl}${avatarUrl}`;
         }
 
         setProfile({
@@ -260,7 +261,8 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
 
       let avatarUrl = response.data.avatar_url;
       if (avatarUrl.startsWith('/uploads/')) {
-        avatarUrl = `http://localhost:8000${avatarUrl}`;
+        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        avatarUrl = `${baseUrl}${avatarUrl}`;
       }
 
       setProfile(prev => prev ? { ...prev, avatarUrl } : null);

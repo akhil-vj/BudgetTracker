@@ -39,7 +39,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await api.get('/auth/me');
       const data = response.data;
       if (data.avatar_url && data.avatar_url.startsWith('/uploads/')) {
-        data.avatar_url = `http://localhost:8000${data.avatar_url}`;
+        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        data.avatar_url = `${baseUrl}${data.avatar_url}`;
       }
       setProfile(data);
       setUser(data);

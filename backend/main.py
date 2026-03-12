@@ -24,6 +24,7 @@ app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    os.getenv("FRONTEND_URL", "http://localhost:3000"),
     "http://localhost:5173", # Vite default
 ]
 
