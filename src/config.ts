@@ -4,4 +4,4 @@
  * Local Development: http://localhost:8000
  * Production: https://your-api-name.render.com (example)
  */
-export const BACKEND_URL = "http://localhost:8000";
+export const BACKEND_URL = "https://budgettracker-xteo.onrender.com";
