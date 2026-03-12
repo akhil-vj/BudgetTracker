@@ -6,4 +6,4 @@ import os
 # Local Development: http://localhost:3000
 # Production: https://your-app-name.netlify.app (example)
 
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "https://qc-financetracker.netlify.app")

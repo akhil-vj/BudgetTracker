@@ -27,6 +27,7 @@ origins = [
     "http://127.0.0.1:3000",
     FRONTEND_URL,
     "http://localhost:5173", # Vite default
+    "https://qc-financetracker.netlify.app",
 ]
 
 app.add_middleware(
