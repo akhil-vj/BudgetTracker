@@ -9,22 +9,37 @@ echo "🔔 BudgetTracker Notification System Setup"
 echo "========================================"
 echo ""
 
-# Check for .env.local
+# Check for .env.local (Frontend)
 if [ ! -f ".env.local" ]; then
     echo "❌ .env.local not found!"
-    echo "Please create .env.local with your API keys:"
+    echo "Please create .env.local in the project root with:"
     echo ""
-    echo "VITE_SUPABASE_URL=your_url"
-    echo "VITE_SUPABASE_ANON_KEY=your_key"
-    echo "VITE_RESEND_API_KEY=re_your_resend_key"
     echo "VITE_VAPID_PUBLIC_KEY=your_public_key"
+    echo ""
+    exit 1
+fi
+
+# Check for backend/.env (Backend)
+if [ ! -f "backend/.env" ]; then
+    echo "❌ backend/.env not found!"
+    echo "Please create .env in the backend folder with:"
+    echo ""
+    echo "SECRET_KEY=your_secret_key"
+    echo "RESEND_API_KEY=re_your_resend_key"
+    echo "VAPID_PRIVATE_KEY=your_private_key"
     echo ""
     exit 1
 fi
 
 # Check Node.js
 if ! command -v node &> /dev/null; then
-    echo "❌ Node.js not found! Please install Node.js 16+"
+    echo "❌ Node.js not found! Please install Node.js 18+"
+    exit 1
+fi
+
+# Check Python
+if ! command -v python &> /dev/null; then
+    echo "❌ Python not found! Please install Python 3.10+"
     exit 1
 fi
 
@@ -33,35 +48,27 @@ echo ""
 
 # Check npm packages
 echo "📦 Checking npm packages..."
-if ! npm list @tensorflow/tfjs > /dev/null 2>&1; then
-    echo "Installing dependencies..."
+if [ ! -d "node_modules" ]; then
+    echo "Installing frontend dependencies..."
     npm install
 else
-    echo "✅ Dependencies installed"
+    echo "✅ Frontend dependencies installed"
 fi
 
 echo ""
 echo "🔐 Setup Steps:"
-echo "1. Create migration in Supabase console"
-echo "   - Copy: supabase/migrations/notification_queue_setup.sql"
-echo "   - Paste in Supabase SQL Editor"
-echo "   - Execute"
-echo ""
-echo "2. Add Supabase secret"
-echo "   Command:"
-echo "   supabase secrets set RESEND_API_KEY=\$VITE_RESEND_API_KEY"
-echo ""
-echo "3. Create Edge Function"
-echo "   - Name: send-notification-email"
-echo "   - Copy: supabase/functions/send-notification-email/index.ts"
-echo "   - Deploy"
-echo ""
-echo "4. Start development server"
-echo "   npm run dev"
-echo ""
-echo "5. Test notifications"
-echo "   - Create budget: ₹1000"
-echo "   - Create expense: ₹1500"
-echo "   - Check AlertsPage and email"
-echo ""
-echo "✅ Setup complete! Happy budgeting! 🎉"
+1. Configure backend/
+   - Ensure venv is activated
+   - pip install -r requirements.txt
+   - Verify .env contains RESEND_API_KEY and VAPID_PRIVATE_KEY
+
+2. Start the servers
+   - Backend: uvicorn main:app --reload (in backend/)
+   - Frontend: npm run dev (in root)
+
+3. Test notifications
+   - Create budget: ₹1000
+   - Create expense: ₹1500
+   - Check Alerts tab and email
+
+✅ Setup complete! Happy budgeting! 🎉

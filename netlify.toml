@@ -42,7 +42,5 @@
   port = 5173
 
 # Environment variables (add these in Netlify UI)
-# VITE_SUPABASE_URL
-# VITE_SUPABASE_PUBLISHABLE_KEY
-# VITE_RESEND_API_KEY
+# VITE_API_URL (e.g., https://your-backend-api.com)
 # VITE_VAPID_PUBLIC_KEY

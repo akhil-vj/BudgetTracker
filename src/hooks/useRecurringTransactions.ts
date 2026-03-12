@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/api';
 import { useToast } from './use-toast';
 
 export interface RecurringTransaction {
@@ -23,42 +23,20 @@ export function useRecurringTransactions() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Fetch recurring transactions
   const { data: recurringTransactions = [], isLoading, error } = useQuery({
     queryKey: ['recurring_transactions', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
-
-      const { data, error } = await supabase
-        .from('recurring_transactions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .order('next_due_date', { ascending: true });
-
-      if (error) throw error;
-      return (data || []) as RecurringTransaction[];
+      const { data } = await api.get('/recurring_transactions');
+      return data as RecurringTransaction[];
     },
     enabled: !!user?.id,
   });
 
-  // Add recurring transaction
   const addRecurringMutation = useMutation({
     mutationFn: async (data: Omit<RecurringTransaction, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
       if (!user?.id) throw new Error('Not authenticated');
-
-      const { data: result, error } = await supabase
-        .from('recurring_transactions')
-        .insert([
-          {
-            user_id: user.id,
-            ...data,
-          },
-        ])
-        .select()
-        .single();
-
-      if (error) throw error;
+      const { data: result } = await api.post('/recurring_transactions', data);
       return result;
     },
     onSuccess: () => {
@@ -77,28 +55,20 @@ export function useRecurringTransactions() {
     },
   });
 
-  // Update recurring transaction
   const updateRecurringMutation = useMutation({
     mutationFn: async (data: RecurringTransaction) => {
       if (!user?.id) throw new Error('Not authenticated');
-
-      const { data: result, error } = await supabase
-        .from('recurring_transactions')
-        .update({
-          category: data.category,
-          amount: data.amount,
-          description: data.description,
-          frequency: data.frequency,
-          day_of_month: data.day_of_month,
-          day_of_week: data.day_of_week,
-          next_due_date: data.next_due_date,
-        })
-        .eq('id', data.id)
-        .eq('user_id', user.id)
-        .select()
-        .single();
-
-      if (error) throw error;
+      const payload = {
+        category: data.category,
+        amount: data.amount,
+        description: data.description,
+        frequency: data.frequency,
+        day_of_month: data.day_of_month,
+        day_of_week: data.day_of_week,
+        next_due_date: data.next_due_date,
+        is_active: data.is_active,
+      };
+      const { data: result } = await api.put(`/recurring_transactions/${data.id}`, payload);
       return result;
     },
     onSuccess: () => {
@@ -110,16 +80,9 @@ export function useRecurringTransactions() {
     },
   });
 
-  // Delete recurring transaction
   const deleteRecurringMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('recurring_transactions')
-        .update({ is_active: false })
-        .eq('id', id)
-        .eq('user_id', user?.id);
-
-      if (error) throw error;
+      await api.delete(`/recurring_transactions/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recurring_transactions', user?.id] });
@@ -130,7 +93,6 @@ export function useRecurringTransactions() {
     },
   });
 
-  // Get upcoming bills (next 30 days)
   const upcomingBills = recurringTransactions
     .filter(rt => {
       const dueDate = new Date(rt.next_due_date);
@@ -140,7 +102,6 @@ export function useRecurringTransactions() {
     })
     .sort((a, b) => new Date(a.next_due_date).getTime() - new Date(b.next_due_date).getTime());
 
-  // Get overdue bills
   const overdueBills = recurringTransactions
     .filter(rt => {
       const dueDate = new Date(rt.next_due_date);

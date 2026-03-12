@@ -39,7 +39,7 @@ function generateVAPIDKeys() {
   // Extract raw key bytes (skip ASN.1 headers)
   // For prime256v1, the public key is always 65 bytes (0x04 + 32 bytes X + 32 bytes Y)
   const publicKeyRaw = publicKeyDer.slice(-65);
-  
+
   // For private key, extract the 32-byte private key value
   const privateKeyRaw = privateKeyDer.slice(-32);
 
@@ -73,26 +73,22 @@ try {
 
   console.log('════════════════════════════════════════════════════════════\n');
 
-  console.log('🔒 Add to Supabase Secrets (Backend):\n');
-  console.log(`Name: VAPID_PRIVATE_KEY`);
-  console.log(`Value: ${keys.private}\n`);
+  console.log('🔒 Add to backend/.env (Backend):\n');
+  console.log(`VAPID_PRIVATE_KEY="${keys.private}"\n`);
 
   console.log('════════════════════════════════════════════════════════════\n');
 
-  console.log('📝 Full .env.local example:\n');
-  console.log(`VITE_SUPABASE_URL="your_supabase_url"`);
-  console.log(`VITE_SUPABASE_ANON_KEY="your_anon_key"`);
-  console.log(`VITE_RESEND_API_KEY="re_your_resend_key"`);
+  console.log('📝 Full .env.local example (Frontend):\n');
   console.log(`VITE_VAPID_PUBLIC_KEY="${keys.public}"`);
-  console.log(`VITE_APP_URL="http://localhost:5173"\n`);
+  console.log(`VITE_APP_URL="http://localhost:3000"\n`);
 
   console.log('════════════════════════════════════════════════════════════\n');
 
   console.log('✨ Next Steps:\n');
   console.log('1. Copy VITE_VAPID_PUBLIC_KEY above to .env.local');
-  console.log('2. Go to Supabase Console → Settings → Secrets');
-  console.log('3. Add VAPID_PRIVATE_KEY with the private key above');
-  console.log('4. Restart your dev server (npm run dev)');
+  console.log('2. Add VAPID_PRIVATE_KEY to backend/.env');
+  console.log('3. Restart your backend server');
+  console.log('4. Restart your frontend dev server (npm run dev)');
   console.log('5. Push notifications should now work!\n');
 
   console.log('💡 Note: Push notifications are optional.');

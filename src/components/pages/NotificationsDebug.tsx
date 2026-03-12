@@ -141,15 +141,15 @@ export function NotificationsDebug() {
 
           <div className="flex items-center gap-3">
             <div>
-              <p className="font-medium text-sm">3. Private Key in Supabase</p>
-              <p className="text-xs text-muted-foreground">Settings → Secrets → VAPID_PRIVATE_KEY</p>
+              <p className="font-medium text-sm">3. SECRET_KEY in Backend</p>
+              <p className="text-xs text-muted-foreground">Set SECRET_KEY in backend/.env for JWT</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <div>
               <p className="font-medium text-sm">4. Database Migration Run</p>
-              <p className="text-xs text-muted-foreground">Copy notification_queue_setup.sql to Supabase</p>
+              <p className="text-xs text-muted-foreground">Backend auto-creates tables on startup</p>
             </div>
           </div>
 

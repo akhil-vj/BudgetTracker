@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from './use-toast';
 
 export interface Notification {
@@ -14,44 +15,30 @@ export interface Notification {
 }
 
 export function useNotifications() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ['notifications'],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
+      if (!user?.id) return [];
 
-      const { data, error } = await supabase
-        .from('alerts')
-        .select('*')
-        .eq('user_id', user.id)
-        .in('type', ['success', 'info', 'reminder'])
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        return [];
-      }
-
-      return (data || []) as Notification[];
+      const { data } = await api.get('/alerts');
+      return data.filter((n: Notification) => ['success', 'info', 'reminder'].includes(n.type));
     },
+    enabled: !!user?.id,
     refetchOnWindowFocus: true,
   });
 
   const markAsRead = useMutation({
     mutationFn: async (notificationId: string) => {
-      const { error } = await supabase
-        .from('alerts')
-        .update({ read: true, updated_at: new Date().toISOString() })
-        .eq('id', notificationId);
-
-      if (error) throw error;
+      await api.put(`/alerts/${notificationId}/read`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: 'Error',
         description: 'Failed to mark notification as read',
@@ -62,17 +49,12 @@ export function useNotifications() {
 
   const deleteNotification = useMutation({
     mutationFn: async (notificationId: string) => {
-      const { error } = await supabase
-        .from('alerts')
-        .delete()
-        .eq('id', notificationId);
-
-      if (error) throw error;
+      await api.delete(`/alerts/${notificationId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: 'Error',
         description: 'Failed to delete notification',
@@ -83,17 +65,9 @@ export function useNotifications() {
 
   const markAllAsRead = useMutation({
     mutationFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
-      const { error } = await supabase
-        .from('alerts')
-        .update({ read: true, updated_at: new Date().toISOString() })
-        .eq('user_id', user.id)
-        .in('type', ['success', 'info', 'reminder'])
-        .eq('read', false);
-
-      if (error) throw error;
+      const unread = notifications.filter((n: Notification) => !n.read);
+      await Promise.all(unread.map((n: Notification) => api.put(`/alerts/${n.id}/read`)));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -102,7 +76,7 @@ export function useNotifications() {
         description: 'All notifications marked as read',
       });
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: 'Error',
         description: 'Failed to mark notifications as read',
@@ -113,16 +87,8 @@ export function useNotifications() {
 
   const clearAll = useMutation({
     mutationFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
-      const { error } = await supabase
-        .from('alerts')
-        .delete()
-        .eq('user_id', user.id)
-        .in('type', ['success', 'info', 'reminder']);
-
-      if (error) throw error;
+      await Promise.all(notifications.map((n: Notification) => api.delete(`/alerts/${n.id}`)));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -131,7 +97,7 @@ export function useNotifications() {
         description: 'All notifications cleared',
       });
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: 'Error',
         description: 'Failed to clear notifications',
@@ -140,7 +106,7 @@ export function useNotifications() {
     },
   });
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter((n: Notification) => !n.read).length;
 
   return {
     notifications,

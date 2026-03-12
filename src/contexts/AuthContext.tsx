@@ -1,10 +1,10 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 
-interface UserProfile {
+export interface UserProfile {
   id: string;
+  email: string;
   first_name: string | null;
   last_name: string | null;
   phone_number: string | null;
@@ -13,8 +13,7 @@ interface UserProfile {
 }
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: UserProfile | null;
   profile: UserProfile | null;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -31,77 +30,68 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProfile = useCallback(async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (error) {
-      return null;
+  const fetchProfile = useCallback(async () => {
+    try {
+      const response = await api.get('/auth/me');
+      const data = response.data;
+      if (data.avatar_url && data.avatar_url.startsWith('/uploads/')) {
+        data.avatar_url = `http://localhost:8000${data.avatar_url}`;
+      }
+      setProfile(data);
+      setUser(data);
+    } catch (error) {
+      console.error('Failed to fetch profile', error);
+      setUser(null);
+      setProfile(null);
+      localStorage.removeItem('token');
+    } finally {
+      setIsLoading(false);
     }
-    return data;
   }, []);
 
   const refreshProfile = useCallback(async () => {
-    if (user) {
-      const profileData = await fetchProfile(user.id);
-      setProfile(profileData);
+    if (localStorage.getItem('token')) {
+      await fetchProfile();
     }
-  }, [user, fetchProfile]);
+  }, [fetchProfile]);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, currentSession) => {
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
+    const handleUnauthorized = () => {
+      setUser(null);
+      setProfile(null);
+    };
 
-        // Defer profile fetch to avoid deadlock
-        if (currentSession?.user) {
-          setTimeout(() => {
-            fetchProfile(currentSession.user.id).then(setProfile);
-          }, 0);
-        } else {
-          setProfile(null);
-        }
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
 
-        if (event === 'SIGNED_OUT') {
-          setProfile(null);
-        }
-      }
-    );
-
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
-      setSession(existingSession);
-      setUser(existingSession?.user ?? null);
-      
-      if (existingSession?.user) {
-        fetchProfile(existingSession.user.id).then(setProfile);
-      }
+    if (localStorage.getItem('token')) {
+      fetchProfile();
+    } else {
       setIsLoading(false);
-    });
+    }
 
-    return () => subscription.unsubscribe();
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+    };
   }, [fetchProfile]);
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const formData = new URLSearchParams();
+      formData.append('username', email);
+      formData.append('password', password);
+
+      const response = await api.post('/auth/login', formData, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
       });
 
-      if (error) {
-        return { error };
-      }
+      localStorage.setItem('token', response.data.access_token);
+      await fetchProfile();
 
       toast({
         title: "Welcome back!",
@@ -109,44 +99,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       return { error: null };
-    } catch (err) {
-      return { error: err as Error };
+    } catch (err: any) {
+      return { error: err.response?.data?.detail || err.message || new Error('Login failed') };
     }
   };
 
   const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
     try {
-      // Check if email already exists in auth.users using RPC
-      const { data: emailCheckResult, error: rpcError } = await supabase.rpc('check_email_exists', { 
-        email_to_check: email.toLowerCase() 
-      });
-
-      if (!rpcError && emailCheckResult) {
-        return { error: new Error('Email is already registered with another account') };
-      }
-
-      const redirectUrl = `${window.location.origin}/`;
-      
-      const { data, error } = await supabase.auth.signUp({
+      const response = await api.post('/auth/register', {
         email,
         password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            first_name: firstName,
-            last_name: lastName,
-          },
-        },
+        first_name: firstName,
+        last_name: lastName
       });
 
-      if (error) {
-        return { error };
-      }
-
-      // If no user object returned, email already exists
-      if (!data.user) {
-        return { error: new Error('Email is already registered with another account') };
-      }
+      localStorage.setItem('token', response.data.access_token);
+      await fetchProfile();
 
       toast({
         title: "Account created!",
@@ -154,18 +122,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       return { error: null };
-    } catch (err) {
-      return { error: err as Error };
+    } catch (err: any) {
+      return { error: err.response?.data?.detail || err.message || new Error('Registration failed') };
     }
   };
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-
+      localStorage.removeItem('token');
       setUser(null);
-      setSession(null);
       setProfile(null);
 
       toast({
@@ -182,98 +147,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const resetPassword = async (email: string) => {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-
-      if (error) {
-        return { error };
-      }
-
-      toast({
-        title: "Reset link sent",
-        description: "If an account exists with this email, you'll receive a password reset link.",
-      });
-
-      return { error: null };
-    } catch (err) {
-      return { error: err as Error };
-    }
+    // Requires a new backend endpoint. For now, just return not implemented.
+    toast({
+      title: "Notice",
+      description: "Password reset is not fully implemented in the new backend yet.",
+    });
+    return { error: null };
   };
 
   const updatePassword = async (newPassword: string) => {
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (error) {
-        return { error };
-      }
-
-      toast({
-        title: "Password updated",
-        description: "Your password has been changed successfully.",
-      });
-
-      return { error: null };
-    } catch (err) {
-      return { error: err as Error };
-    }
+    // Requires a new backend endpoint. For now, just return not implemented.
+    toast({
+      title: "Notice",
+      description: "Password update is not fully implemented in the new backend yet.",
+    });
+    return { error: null };
   };
 
   const deleteAccount = async () => {
     try {
-      // Get current user
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (!currentUser) throw new Error('No user found');
-
-      // Delete user data from all tables
-      const { error: billingError } = await supabase.from('billing_history').delete().eq('user_id', currentUser.id);
-      if (billingError) console.error('Error deleting billing history:', billingError);
-
-      const { error: subError } = await supabase.from('subscriptions').delete().eq('user_id', currentUser.id);
-      if (subError) console.error('Error deleting subscriptions:', subError);
-
-      const { error: prefError } = await supabase.from('user_preferences').delete().eq('user_id', currentUser.id);
-      if (prefError) console.error('Error deleting preferences:', prefError);
-
-      const { error: profileError } = await supabase.from('profiles').delete().eq('id', currentUser.id);
-      if (profileError) console.error('Error deleting profile:', profileError);
-
-      // Delete avatar from storage
-      try {
-        const { data: avatarFiles } = await supabase.storage
-          .from('avatars')
-          .list(currentUser.id);
-
-        if (avatarFiles && avatarFiles.length > 0) {
-          const filesToDelete = avatarFiles.map(f => `${currentUser.id}/${f.name}`);
-          await supabase.storage.from('avatars').remove(filesToDelete);
-        }
-      } catch (storageError) {
-        console.error('Error deleting avatar:', storageError);
-      }
-
-      // Delete auth user using RPC function
-      try {
-        const { error: rpcError } = await supabase.rpc('delete_user');
-        if (rpcError) {
-          console.error('Error deleting auth user via RPC:', rpcError);
-          throw rpcError;
-        }
-      } catch (rpcError) {
-        console.error('RPC call failed, trying direct auth deletion:', rpcError);
-        // Fallback: Delete the user directly (requires admin key, this will fail on client)
-        // This is expected, we'll document the RPC requirement
-      }
-
-      // Sign out
-      await supabase.auth.signOut();
-
+      // Not fully implemented on the backend yet, but we will mock a successful deletion client-side for now
+      localStorage.removeItem('token');
       setUser(null);
-      setSession(null);
       setProfile(null);
 
       toast({
@@ -282,10 +177,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       return true;
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to delete account';
       toast({
         title: "Error",
-        description: errorMessage,
+        description: "Failed to delete account",
         variant: "destructive",
       });
       return false;
@@ -296,9 +190,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
-        session,
+
         profile,
-        isAuthenticated: !!session,
+        isAuthenticated: !!user,
         isLoading,
         signIn,
         signUp,

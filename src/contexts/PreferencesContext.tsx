@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { api } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { convertCurrency } from '@/lib/exchange';
 
 export type CurrencyCode = 'INR' | 'USD' | 'EUR' | 'GBP' | 'JPY';
@@ -67,104 +68,69 @@ const PreferencesContext = createContext<PreferencesContextType | undefined>(und
 
 export function PreferencesProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
+  const { user, profile: authProfile, isLoading: authLoading } = useAuth();
   const [preferences, setPreferences] = useState<UserPreferences>(defaultPreferences);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+
+  const isAuthenticated = !!user;
+  const userId = user?.id || null;
+  const lastFetchedUid = useRef<string | null>(null);
 
   const fetchUserData = useCallback(async (uid: string) => {
     try {
-      // Fetch profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', uid)
-        .single();
+      if (authProfile) {
+        let avatarUrl = authProfile.avatar_url || '';
+        if (avatarUrl.startsWith('/uploads/')) {
+          avatarUrl = `http://localhost:8000${avatarUrl}`;
+        }
 
-      if (profileError && profileError.code !== 'PGRST116') {
-        // Profile fetch error - continuing anyway
-      }
-
-      // Fetch user email from auth
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (profileData) {
         setProfile({
-          id: profileData.id,
-          firstName: profileData.first_name || '',
-          lastName: profileData.last_name || '',
-          email: user?.email || '',
-          phoneNumber: profileData.phone_number || '',
-          location: profileData.location || '',
-          avatarUrl: profileData.avatar_url || '',
-        });
-      } else {
-        // Create profile if doesn't exist
-        setProfile({
-          id: uid,
-          firstName: '',
-          lastName: '',
-          email: user?.email || '',
-          phoneNumber: '',
-          location: '',
-          avatarUrl: '',
+          id: authProfile.id || uid,
+          firstName: authProfile.first_name || '',
+          lastName: authProfile.last_name || '',
+          email: authProfile.email || '',
+          phoneNumber: authProfile.phone_number || '',
+          location: authProfile.location || '',
+          avatarUrl: avatarUrl,
         });
       }
 
-      // Fetch preferences
-      const { data: prefsData, error: prefsError } = await supabase
-        .from('user_preferences')
-        .select('*')
-        .eq('user_id', uid)
-        .single();
-
-      if (prefsError && prefsError.code !== 'PGRST116') {
-        // Preferences fetch error - using defaults
+      try {
+        const { data: prefsData } = await api.get('/preferences');
+        if (prefsData) {
+          setPreferences({
+            currency: (prefsData.currency as CurrencyCode) || 'INR',
+            dateFormat: (prefsData.date_format as DateFormatType) || 'DD/MM/YYYY',
+            timezone: (prefsData.timezone as TimezoneType) || 'Asia/Kolkata',
+            darkMode: prefsData.dark_mode ?? true,
+            notificationsPush: prefsData.notifications_push ?? true,
+            notificationsEmail: prefsData.notifications_email ?? true,
+            notificationsSound: prefsData.notifications_sound ?? false,
+            analyticsEnabled: prefsData.analytics_enabled ?? true,
+            predictionsEnabled: prefsData.predictions_enabled ?? true,
+          });
+        }
+      } catch (err) {
+        // use defaults if preferences route fails or doesn't exist yet
       }
 
-      if (prefsData) {
-        setPreferences({
-          currency: (prefsData.currency as CurrencyCode) || 'INR',
-          dateFormat: (prefsData.date_format as DateFormatType) || 'DD/MM/YYYY',
-          timezone: (prefsData.timezone as TimezoneType) || 'Asia/Kolkata',
-          darkMode: prefsData.dark_mode ?? true,
-          notificationsPush: prefsData.notifications_push ?? true,
-          notificationsEmail: prefsData.notifications_email ?? true,
-          notificationsSound: prefsData.notifications_sound ?? false,
-          analyticsEnabled: prefsData.analytics_enabled ?? true,
-          predictionsEnabled: prefsData.predictions_enabled ?? true,
-        });
-      }
+      // Mock subscription for Python migration since it's not implemented yet
+      setSubscription({
+        planName: 'free',
+        price: 0,
+        currency: 'INR',
+        status: 'active',
+        billingCycle: 'monthly',
+        nextBillingDate: null,
+      });
 
-      // Fetch subscription
-      const { data: subData, error: subError } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', uid)
-        .single();
-
-      if (subError && subError.code !== 'PGRST116') {
-        // Subscription fetch error - using defaults
-      }
-
-      if (subData) {
-        setSubscription({
-          planName: subData.plan_name || 'free',
-          price: Number(subData.price) || 0,
-          currency: (subData.currency as CurrencyCode) || 'INR',
-          status: subData.status || 'active',
-          billingCycle: subData.billing_cycle || 'monthly',
-          nextBillingDate: subData.next_billing_date,
-        });
-      }
     } catch (error) {
-      // Error fetching user data - using default preferences
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [authProfile]);
 
   const refreshData = useCallback(async () => {
     if (userId) {
@@ -172,7 +138,6 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
     }
   }, [userId, fetchUserData]);
 
-  // Apply dark mode class to document
   useEffect(() => {
     const htmlElement = document.documentElement;
     if (preferences.darkMode) {
@@ -183,107 +148,70 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
   }, [preferences.darkMode]);
 
   useEffect(() => {
-    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        const uid = session?.user?.id || null;
-        setUserId(uid);
-        setIsAuthenticated(!!uid);
+    if (authLoading) return;
 
-        if (uid) {
-          setTimeout(() => {
-            fetchUserData(uid);
-          }, 0);
-        } else {
-          setProfile(null);
-          setSubscription(null);
-          setPreferences(defaultPreferences);
-          setIsLoading(false);
-        }
-      }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const uid = session?.user?.id || null;
-      setUserId(uid);
-      setIsAuthenticated(!!uid);
-
-      if (uid) {
-        fetchUserData(uid);
-      } else {
-        setIsLoading(false);
-      }
-    });
-
-    return () => authSubscription.unsubscribe();
-  }, [fetchUserData]);
+    if (userId && lastFetchedUid.current !== userId) {
+      lastFetchedUid.current = userId;
+      fetchUserData(userId);
+    } else if (!userId) {
+      lastFetchedUid.current = null;
+      setProfile(null);
+      setSubscription(null);
+      setPreferences(defaultPreferences);
+      setIsLoading(false);
+    }
+  }, [userId, authLoading, fetchUserData]);
 
   const updatePreferences = async (updates: Partial<UserPreferences>) => {
     if (!userId) return;
 
-    // Handle currency conversion when currency changes
     if (updates.currency && updates.currency !== preferences.currency) {
       try {
-        // Convert all transactions to new currency
-        const { data: transactions, error: fetchError } = await supabase
-          .from('transactions')
-          .select('*')
-          .eq('user_id', userId);
+        // Frontend currency conversion mock (real implementation would fetch all transactions and convert or rely on backend)
+        // Leaving it to the basic conversion for now
+        const { data: transactions } = await api.get('/transactions');
 
-        if (!fetchError && transactions && transactions.length > 0) {
+        if (transactions && transactions.length > 0) {
           const convertedTransactions = transactions.map((txn: any) => ({
             ...txn,
-            amount: convertCurrency(txn.amount, preferences.currency, updates.currency),
+            amount: convertCurrency(txn.amount, preferences.currency, updates.currency as CurrencyCode),
           }));
 
-          // Update all transactions with converted amounts
           for (const txn of convertedTransactions) {
-            const { id, amount } = txn;
-            const { error: updateError } = await supabase
-              .from('transactions')
-              .update({ amount })
-              .eq('id', id);
-
-            if (updateError) {
-              // Error converting transaction amount - continuing
-            }
+            await api.put(`/transactions/${txn.id}`, { amount: txn.amount });
           }
         }
       } catch (error) {
-        // Error during currency conversion - continuing
       }
     }
 
-    const dbUpdates: Record<string, unknown> = {};
-    if (updates.currency !== undefined) dbUpdates.currency = updates.currency;
-    if (updates.dateFormat !== undefined) dbUpdates.date_format = updates.dateFormat;
-    if (updates.timezone !== undefined) dbUpdates.timezone = updates.timezone;
-    if (updates.darkMode !== undefined) dbUpdates.dark_mode = updates.darkMode;
-    if (updates.notificationsPush !== undefined) dbUpdates.notifications_push = updates.notificationsPush;
-    if (updates.notificationsEmail !== undefined) dbUpdates.notifications_email = updates.notificationsEmail;
-    if (updates.notificationsSound !== undefined) dbUpdates.notifications_sound = updates.notificationsSound;
-    if (updates.analyticsEnabled !== undefined) dbUpdates.analytics_enabled = updates.analyticsEnabled;
-    if (updates.predictionsEnabled !== undefined) dbUpdates.predictions_enabled = updates.predictionsEnabled;
+    const payload: Record<string, unknown> = {};
+    if (updates.currency !== undefined) payload.currency = updates.currency;
+    if (updates.dateFormat !== undefined) payload.date_format = updates.dateFormat;
+    if (updates.timezone !== undefined) payload.timezone = updates.timezone;
+    if (updates.darkMode !== undefined) payload.dark_mode = updates.darkMode;
+    if (updates.notificationsPush !== undefined) payload.notifications_push = updates.notificationsPush;
+    if (updates.notificationsEmail !== undefined) payload.notifications_email = updates.notificationsEmail;
+    if (updates.notificationsSound !== undefined) payload.notifications_sound = updates.notificationsSound;
+    if (updates.analyticsEnabled !== undefined) payload.analytics_enabled = updates.analyticsEnabled;
+    if (updates.predictionsEnabled !== undefined) payload.predictions_enabled = updates.predictionsEnabled;
 
-    const { error } = await supabase
-      .from('user_preferences')
-      .upsert({ user_id: userId, ...dbUpdates });
+    try {
+      await api.put('/preferences', payload);
+      setPreferences(prev => ({ ...prev, ...updates }));
 
-    if (error) {
+      if (updates.currency) {
+        toast({
+          title: "Currency Updated",
+          description: `All amounts have been converted to ${updates.currency}`,
+          variant: "default",
+        });
+      }
+    } catch (error) {
       toast({
         title: "Error",
         description: "Failed to update preferences",
         variant: "destructive",
-      });
-      return;
-    }
-
-    setPreferences(prev => ({ ...prev, ...updates }));
-
-    if (updates.currency) {
-      toast({
-        title: "Currency Updated",
-        description: `All amounts have been converted to ${updates.currency}`,
-        variant: "default",
       });
     }
   };
@@ -291,54 +219,61 @@ export function PreferencesProvider({ children }: { children: React.ReactNode })
   const updateProfile = async (updates: Partial<UserProfile>) => {
     if (!userId) return;
 
-    const dbUpdates: Record<string, unknown> = {};
-    if (updates.firstName !== undefined) dbUpdates.first_name = updates.firstName;
-    if (updates.lastName !== undefined) dbUpdates.last_name = updates.lastName;
-    if (updates.phoneNumber !== undefined) dbUpdates.phone_number = updates.phoneNumber;
-    if (updates.location !== undefined) dbUpdates.location = updates.location;
-    if (updates.avatarUrl !== undefined) dbUpdates.avatar_url = updates.avatarUrl;
+    try {
+      const response = await api.put('/auth/profile', updates);
 
-    const { error } = await supabase
-      .from('profiles')
-      .upsert({ id: userId, ...dbUpdates });
+      const updatedProfile = {
+        ...profile!,
+        firstName: response.data.first_name,
+        lastName: response.data.last_name,
+        phoneNumber: response.data.phone_number,
+        location: response.data.location,
+      };
 
-    if (error) {
+      setProfile(updatedProfile);
+
+      toast({
+        title: "Profile updated",
+        description: "Your profile information has been saved successfully.",
+      });
+    } catch (error) {
       toast({
         title: "Error",
         description: "Failed to update profile",
         variant: "destructive",
       });
-      return;
     }
-
-    setProfile(prev => prev ? { ...prev, ...updates } : null);
   };
 
   const uploadAvatar = async (file: File): Promise<string | null> => {
     if (!userId) return null;
 
-    const fileExt = file.name.split('.').pop();
-    const filePath = `${userId}/${Date.now()}.${fileExt}`;
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
 
-    const { error: uploadError } = await supabase.storage
-      .from('avatars')
-      .upload(filePath, file, { upsert: true });
+      const response = await api.post('/auth/profile/avatar', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
 
-    if (uploadError) {
+      let avatarUrl = response.data.avatar_url;
+      if (avatarUrl.startsWith('/uploads/')) {
+        avatarUrl = `http://localhost:8000${avatarUrl}`;
+      }
+
+      setProfile(prev => prev ? { ...prev, avatarUrl } : null);
+
+      return avatarUrl;
+    } catch (error) {
       toast({
-        title: "Upload failed",
-        description: uploadError.message,
+        title: "Error",
+        description: "Failed to upload avatar",
         variant: "destructive",
       });
       return null;
     }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('avatars')
-      .getPublicUrl(filePath);
-
-    await updateProfile({ avatarUrl: publicUrl });
-    return publicUrl;
   };
 
   return (

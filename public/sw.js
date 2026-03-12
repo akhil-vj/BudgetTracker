@@ -60,8 +60,12 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // API calls - network first
-  if (url.pathname.includes('/rest/') || url.hostname.includes('supabase')) {
+  // API calls - network first (e.g., our Python FastAPI backend)
+  if (url.pathname.startsWith('/auth/') ||
+    url.pathname.startsWith('/transactions/') ||
+    url.pathname.startsWith('/budgets/') ||
+    url.pathname.startsWith('/preferences/') ||
+    url.pathname.startsWith('/alerts/')) {
     event.respondWith(
       fetch(request)
         .then((response) => {

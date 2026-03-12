@@ -31,14 +31,14 @@ export default function Auth() {
   const navigate = useNavigate();
   const location = useLocation();
   const { signIn, signUp, resetPassword, isAuthenticated, isLoading: authLoading } = useAuth();
-  
+
   const [mode, setMode] = useState<AuthMode>('login');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [logoLoaded, setLogoLoaded] = useState(false);
-  
+
   // Form fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -115,10 +115,11 @@ export default function Auth() {
     setIsLoading(false);
 
     if (error) {
-      if (error.message.includes('already registered with another account') || error.message.includes('already registered')) {
+      const errorMsg = typeof error === 'string' ? error : (error as Error).message;
+      if (errorMsg.includes('already registered with another account') || errorMsg.includes('already registered') || errorMsg.includes('Already registered')) {
         setErrors({ email: 'Email is already registered with another account' });
       } else {
-        setErrors({ form: error.message });
+        setErrors({ form: errorMsg });
       }
     }
   };
@@ -182,9 +183,8 @@ export default function Auth() {
       >
         <div className="flex justify-center mb-8">
           <div className={`flex items-center ${logoLoaded ? 'gap-1' : 'gap-3'}`}>
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg overflow-hidden ${
-              logoLoaded ? 'bg-[#0A0E1A]' : 'bg-gradient-to-br from-primary to-[hsl(199,89%,48%)]'
-            }`}>
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-lg overflow-hidden ${logoLoaded ? 'bg-[#0A0E1A]' : 'bg-gradient-to-br from-primary to-[hsl(199,89%,48%)]'
+              }`}>
               <img
                 src="/logo.png"
                 alt="Logo"
@@ -532,7 +532,7 @@ export default function Auth() {
                   </div>
                   <h3 className="text-xl font-semibold mb-2">Check your email</h3>
                   <p className="text-muted-foreground mb-6">
-                    If an account exists with <span className="font-medium text-foreground">{email}</span>, 
+                    If an account exists with <span className="font-medium text-foreground">{email}</span>,
                     you'll receive a password reset link shortly.
                   </p>
                   <Button onClick={() => switchMode('login')} variant="outline" className="w-full">

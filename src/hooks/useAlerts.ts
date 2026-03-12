@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from './use-toast';
 
 export interface Alert {
@@ -14,44 +15,30 @@ export interface Alert {
 }
 
 export function useAlerts() {
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: alerts = [], isLoading } = useQuery({
     queryKey: ['alerts'],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
+      if (!user?.id) return [];
 
-      const { data, error } = await supabase
-        .from('alerts')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('type', 'warning')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        return [];
-      }
-
-      return (data || []) as Alert[];
+      const { data } = await api.get('/alerts');
+      return data.filter((a: Alert) => a.type === 'warning');
     },
+    enabled: !!user?.id,
     refetchOnWindowFocus: true,
   });
 
   const markAsRead = useMutation({
     mutationFn: async (alertId: string) => {
-      const { error } = await supabase
-        .from('alerts')
-        .update({ read: true, updated_at: new Date().toISOString() })
-        .eq('id', alertId);
-
-      if (error) throw error;
+      await api.put(`/alerts/${alertId}/read`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alerts'] });
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: 'Error',
         description: 'Failed to mark alert as read',
@@ -62,17 +49,12 @@ export function useAlerts() {
 
   const deleteAlert = useMutation({
     mutationFn: async (alertId: string) => {
-      const { error } = await supabase
-        .from('alerts')
-        .delete()
-        .eq('id', alertId);
-
-      if (error) throw error;
+      await api.delete(`/alerts/${alertId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alerts'] });
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: 'Error',
         description: 'Failed to delete alert',
@@ -83,16 +65,10 @@ export function useAlerts() {
 
   const markAllAsRead = useMutation({
     mutationFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
-      const { error } = await supabase
-        .from('alerts')
-        .update({ read: true, updated_at: new Date().toISOString() })
-        .eq('user_id', user.id)
-        .eq('read', false);
-
-      if (error) throw error;
+      // In a real app, there would be an endpoint for this, we will iterate for now or just trust the future.
+      const unreadAlerts = alerts.filter((a: Alert) => !a.read);
+      await Promise.all(unreadAlerts.map((a: Alert) => api.put(`/alerts/${a.id}/read`)));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alerts'] });
@@ -101,7 +77,7 @@ export function useAlerts() {
         description: 'All alerts marked as read',
       });
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: 'Error',
         description: 'Failed to mark alerts as read',
@@ -112,15 +88,8 @@ export function useAlerts() {
 
   const clearAll = useMutation({
     mutationFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
-      const { error } = await supabase
-        .from('alerts')
-        .delete()
-        .eq('user_id', user.id);
-
-      if (error) throw error;
+      await Promise.all(alerts.map((a: Alert) => api.delete(`/alerts/${a.id}`)));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alerts'] });
@@ -129,7 +98,7 @@ export function useAlerts() {
         description: 'All alerts cleared',
       });
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: 'Error',
         description: 'Failed to clear alerts',
@@ -138,7 +107,7 @@ export function useAlerts() {
     },
   });
 
-  const unreadCount = alerts.filter(a => !a.read).length;
+  const unreadCount = alerts.filter((a: Alert) => !a.read).length;
 
   return {
     alerts,
